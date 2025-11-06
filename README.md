@@ -38,6 +38,11 @@ Start the frontend dev server (Vite)
 npm run dev
 ```
 
+Start both together (concurrent dev)
+```bash
+npm run dev:all
+```
+
 Open http://localhost:5173 in your browser.
 
 Optional: configure the API base URL for the frontend using Vite env:
@@ -123,3 +128,21 @@ Most browsers require HTTPS for geolocation. Localhost is treated as a secure co
 ---
 
 Made with React, MUI, and Leaflet.
+
+## Deploying to Vercel (MVP-friendly)
+
+Option A: UI on Vercel, backend on a host with persistent storage (recommended for quick MVP)
+- Deploy the frontend (this repo) to Vercel.
+- Deploy the Express server (server/index.js) to a persistent Node host (e.g., Render, Railway, Fly.io, your VM). Ensure it exposes `https://<your-backend>/api`.
+- In Vercel, set an Environment Variable `BACKEND_URL` to your backend base URL (e.g., `https://quiet-locations-api.onrender.com`).
+- The provided `vercel.json` will rewrite `/api/*` calls from the frontend to `${BACKEND_URL}/api/*` on Vercel.
+- Also set `VITE_API_BASE_URL` to `/` in Vercel if you want the app to call relative `/api/*` during runtime.
+
+Option B: Serverless functions on Vercel (requires changes)
+- Move endpoints from `server/index.js` into `api/` serverless functions.
+- Replace file-based persistence with a Vercel storage option (KV, Postgres, Blob) because serverless file systems are ephemeral.
+- After migrating, you can remove `BACKEND_URL` and call `/api/*` directly.
+
+Local preview with both servers
+- Use `npm run dev:all` to run Vite and the Express server concurrently.
+- Alternatively, if you convert to Vercel serverless, use `vercel dev` (requires Vercel CLI) to emulate functions locally.
