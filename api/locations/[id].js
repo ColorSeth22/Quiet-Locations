@@ -1,4 +1,4 @@
-const { db } = require('../../_db');
+const { db } = require('../_db');
 
 function sendJson(res, statusCode, data) {
   res.statusCode = statusCode;
@@ -28,7 +28,15 @@ async function readJsonBody(req) {
 }
 
 module.exports = async function handler(req, res) {
-  const { id } = (req.query || {});
+  let { id } = (req.query || {});
+  // Fallback: extract id from URL if not provided (framework differences)
+  if (!id && req.url) {
+    try {
+      const u = new URL(req.url, 'http://localhost');
+      const parts = u.pathname.split('/').filter(Boolean);
+      id = parts[parts.length - 1];
+    } catch {}
+  }
   const method = req.method;
 
   const idx = db.findIndex((d) => String(d.id) === String(id));

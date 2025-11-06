@@ -1,4 +1,4 @@
-const { db } = require('../../_db');
+const { db } = require('../_db');
 
 function sendJson(res, statusCode, data) {
   res.statusCode = statusCode;
