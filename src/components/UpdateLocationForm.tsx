@@ -15,8 +15,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import TAGS from '../data/tags';
 
-// API base URL (should match App.tsx)
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000';
+// API base URL (should match App.tsx). In production use relative '/api'.
+const API_BASE = import.meta.env.PROD
+  ? ((import.meta.env.VITE_API_BASE_URL as string) ?? '')
+  : ((import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000');
 
 type Props = {
   locations: {
@@ -25,9 +27,10 @@ type Props = {
     tags: string[];
   }[];
   onUpdateTags: (id: string, newTags: string[]) => void;
+  onDeleted?: (id: string) => void;
 };
 
-const UpdateLocationForm = ({ locations, onUpdateTags }: Props) => {
+const UpdateLocationForm = ({ locations, onUpdateTags, onDeleted }: Props) => {
   const [selectedId, setSelectedId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -58,8 +61,7 @@ const UpdateLocationForm = ({ locations, onUpdateTags }: Props) => {
         method: 'DELETE',
       });
       if (res.ok) {
-        // Refresh the page or update the locations list
-        window.location.reload();
+        if (onDeleted) onDeleted(selectedId);
       } else {
         console.error('Failed to delete location');
       }

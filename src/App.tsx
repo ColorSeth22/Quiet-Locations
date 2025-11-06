@@ -8,8 +8,10 @@ import Map from './components/Map';
 import AddLocationForm from './components/AddLocationForm';
 import UpdateLocationForm from './components/UpdateLocationForm';
 import { SettingsProvider } from './contexts/settings/provider';
-// backend base URL (use Vite env or fallback)
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000';
+// backend base URL: in production (Vercel), default to relative '/api' (empty base)
+const API_BASE = import.meta.env.PROD
+  ? ((import.meta.env.VITE_API_BASE_URL as string) ?? '')
+  : ((import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000');
 
 type Location = {
   id: string;
@@ -138,6 +140,7 @@ function App() {
               <UpdateLocationForm
                 locations={locations}
                 onUpdateTags={handleUpdateTags}
+                onDeleted={(id) => setLocations((prev) => prev.filter((l) => l.id !== id))}
               />
             )}
           </Box>
