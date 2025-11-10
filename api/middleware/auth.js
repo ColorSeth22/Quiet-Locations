@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 /**
  * Authentication middleware to verify JWT tokens
@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
  *   const user = authResult.user; // { user_id, email }
  */
 
-async function requireAuth(req) {
+export async function requireAuth(req) {
   try {
     // Extract token from Authorization header
     const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -56,7 +56,7 @@ async function requireAuth(req) {
  * Optional authentication - returns user if token is valid, null otherwise
  * Useful for endpoints that work with or without authentication
  */
-async function optionalAuth(req) {
+export async function optionalAuth(req) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
   
   if (!authHeader) {
@@ -81,5 +81,3 @@ async function optionalAuth(req) {
     return { user: null };
   }
 }
-
-module.exports = { requireAuth, optionalAuth };

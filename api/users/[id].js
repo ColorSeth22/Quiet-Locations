@@ -1,5 +1,5 @@
-const { pool } = require('../db');
-const { optionalAuth } = require('../middleware/auth');
+import { pool } from '../db';
+import { optionalAuth } from '../middleware/auth';
 
 function sendJson(res, statusCode, data) {
   res.statusCode = statusCode;
@@ -7,7 +7,7 @@ function sendJson(res, statusCode, data) {
   res.end(JSON.stringify(data));
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   let { id } = (req.query || {});
   
   // If no id provided, use authenticated user's id
