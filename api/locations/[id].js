@@ -1,4 +1,5 @@
-const { db } = require('../_db');
+const { pool } = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 function sendJson(res, statusCode, data) {
   res.statusCode = statusCode;
@@ -39,22 +40,135 @@ module.exports = async function handler(req, res) {
   }
   const method = req.method;
 
-  const idx = db.findIndex((d) => String(d.id) === String(id));
+  try {
+    if (method === 'PUT') {
+      // Require authentication for updating locations
+      const authResult = await requireAuth(req);
+      if (authResult.error) {
+        return sendJson(res, authResult.status, { error: authResult.error });
+      }
 
-  if (method === 'PUT') {
-    if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
-    const updates = await readJsonBody(req);
-    db[idx] = { ...db[idx], ...updates };
-    return sendJson(res, 200, db[idx]);
+      const updates = await readJsonBody(req);
+      const client = await pool.connect();
+      
+      try {
+        await client.query('BEGIN');
+
+        // Update location basic fields
+        const updateFields = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (updates.name !== undefined) {
+          updateFields.push(`name = $${paramCount++}`);
+          values.push(updates.name);
+        }
+        if (updates.lat !== undefined) {
+          updateFields.push(`latitude = $${paramCount++}`);
+          values.push(updates.lat);
+        }
+        if (updates.lng !== undefined) {
+          updateFields.push(`longitude = $${paramCount++}`);
+          values.push(updates.lng);
+        }
+        if (updates.address !== undefined) {
+          updateFields.push(`address = $${paramCount++}`);
+          values.push(updates.address);
+        }
+        if (updates.description !== undefined) {
+          updateFields.push(`description = $${paramCount++}`);
+          values.push(updates.description);
+        }
+
+        if (updateFields.length > 0) {
+          values.push(id);
+          const updateQuery = `
+            UPDATE Locations 
+            SET ${updateFields.join(', ')}
+            WHERE location_id = $${paramCount}
+            RETURNING location_id as id, name, latitude as lat, longitude as lng, address, description
+          `;
+          const result = await client.query(updateQuery, values);
+          
+          if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            client.release();
+            return sendJson(res, 404, { error: 'Not found' });
+          }
+        }
+
+        // Update tags if provided
+        if (Array.isArray(updates.tags)) {
+          // Remove existing tags
+          await client.query('DELETE FROM LocationTags WHERE location_id = $1', [id]);
+
+          // Add new tags
+          for (const tagName of updates.tags) {
+            const tagResult = await client.query(
+              `INSERT INTO Tags (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING tag_id`,
+              [tagName]
+            );
+            const tagId = tagResult.rows[0].tag_id;
+            await client.query(
+              `INSERT INTO LocationTags (location_id, tag_id) VALUES ($1, $2)`,
+              [id, tagId]
+            );
+          }
+        }
+
+        // Fetch updated location with tags
+        const query = `
+          SELECT 
+            l.location_id as id,
+            l.name,
+            l.latitude as lat,
+            l.longitude as lng,
+            l.address,
+            l.description,
+            COALESCE(array_agg(t.name) FILTER (WHERE t.name IS NOT NULL), '{}') as tags
+          FROM Locations l
+          LEFT JOIN LocationTags lt ON l.location_id = lt.location_id
+          LEFT JOIN Tags t ON lt.tag_id = t.tag_id
+          WHERE l.location_id = $1
+          GROUP BY l.location_id, l.name, l.latitude, l.longitude, l.address, l.description
+        `;
+        const finalResult = await client.query(query, [id]);
+
+        await client.query('COMMIT');
+        return sendJson(res, 200, finalResult.rows[0]);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
+    if (method === 'DELETE') {
+      // Require authentication for deleting locations
+      const authResult = await requireAuth(req);
+      if (authResult.error) {
+        return sendJson(res, authResult.status, { error: authResult.error });
+      }
+
+      // CASCADE will automatically delete from LocationTags
+      const result = await pool.query(
+        'DELETE FROM Locations WHERE location_id = $1 RETURNING location_id as id, name',
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return sendJson(res, 404, { error: 'Not found' });
+      }
+
+      return sendJson(res, 200, { success: true, deleted: result.rows[0] });
+    }
+
+    res.setHeader('Allow', 'PUT, DELETE');
+    res.statusCode = 405;
+    res.end('Method Not Allowed');
+  } catch (error) {
+    console.error('API Error:', error);
+    return sendJson(res, 500, { error: 'Internal server error' });
   }
-
-  if (method === 'DELETE') {
-    if (idx === -1) return sendJson(res, 404, { error: 'Not found' });
-    const removed = db.splice(idx, 1)[0];
-    return sendJson(res, 200, removed);
-  }
-
-  res.setHeader('Allow', 'PUT, DELETE');
-  res.statusCode = 405;
-  res.end('Method Not Allowed');
 };

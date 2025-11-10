@@ -7,11 +7,12 @@ import MainMenu from './components/MainMenu';
 import Map from './components/Map';
 import AddLocationForm from './components/AddLocationForm';
 import UpdateLocationForm from './components/UpdateLocationForm';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 import { SettingsProvider } from './contexts/settings/provider';
-// backend base URL: in production (Vercel), default to relative '/api' (empty base)
-const API_BASE = import.meta.env.PROD
-  ? ((import.meta.env.VITE_API_BASE_URL as string) ?? '')
-  : ((import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000');
+import { AuthProvider, useAuth } from './contexts/auth';
+// backend base URL: use relative '/api' for both dev and prod (serverless functions)
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 type Location = {
   id: string;
@@ -22,9 +23,10 @@ type Location = {
   rating: number;
 };
 
-function App() {
-  const [view, setView] = useState('welcome');
+function AppContent() {
+  const [view, setView] = useState<'welcome' | 'map' | 'add' | 'update' | 'login' | 'register'>('welcome');
   const [locations, setLocations] = useState<Location[]>([]);
+  const { token } = useAuth();
 
   useEffect(() => {
     const load = async () => {
@@ -46,11 +48,19 @@ function App() {
 
   const handleAddLocation = async (newLoc: Location) => {
     try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/locations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(newLoc),
       });
+      if (res.status === 401) {
+        setView('login');
+        return;
+      }
       if (res.ok) {
         const created = await res.json();
         setLocations((prev) => [...prev, created]);
@@ -65,11 +75,19 @@ function App() {
 
   const handleUpdateTags = async (id: string, newTags: string[]) => {
     try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`${API_BASE}/api/locations/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ tags: newTags }),
       });
+      if (res.status === 401) {
+        setView('login');
+        return;
+      }
       if (res.ok) {
         const updated = await res.json();
         setLocations((prev) => prev.map((loc) => (loc.id === id ? updated : loc)));
@@ -79,6 +97,33 @@ function App() {
       }
     } catch (err) {
       console.error('Error updating tags', err);
+    }
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${API_BASE}/api/locations/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      if (res.status === 401) {
+        setView('login');
+        return false;
+      }
+      if (res.ok) {
+        setLocations((prev) => prev.filter((l) => l.id !== id));
+        return true;
+      } else {
+        console.error('Failed to delete location', await res.text());
+        return false;
+      }
+    } catch (err) {
+      console.error('Error deleting location', err);
+      return false;
     }
   };
 
@@ -140,7 +185,20 @@ function App() {
               <UpdateLocationForm
                 locations={locations}
                 onUpdateTags={handleUpdateTags}
+                onDelete={handleDeleteLocation}
                 onDeleted={(id) => setLocations((prev) => prev.filter((l) => l.id !== id))}
+              />
+            )}
+            {view === 'login' && (
+              <LoginForm
+                onSuccess={() => setView('map')}
+                onSwitchToRegister={() => setView('register')}
+              />
+            )}
+            {view === 'register' && (
+              <RegisterForm
+                onSuccess={() => setView('map')}
+                onSwitchToLogin={() => setView('login')}
               />
             )}
           </Box>
@@ -148,6 +206,14 @@ function App() {
       )}
       </Box>
     </SettingsProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

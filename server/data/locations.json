@@ -15,5 +15,16 @@
       "Low Noise"
     ],
     "rating": 4.8
+  },
+  {
+    "id": "dunn-library-mho86wgg-qngk",
+    "name": "Dunn Library",
+    "lat": 41.3654657,
+    "lng": -93.5635521,
+    "tags": [
+      "Quiet",
+      "Reservations"
+    ],
+    "rating": 5
   }
 ]

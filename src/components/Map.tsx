@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { defaultIcon } from '../utils/defaultIcon';
 import { userIcon } from '../utils/userIcon';
 import useGeolocation from '../hooks/useGeolocation';
@@ -12,6 +12,7 @@ import Alert from '@mui/material/Alert';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PlaceIcon from '@mui/icons-material/Place';
 import SettingsIcon from '@mui/icons-material/Settings';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -43,7 +44,7 @@ const MapUpdater = ({ coords }: { coords: { latitude: number; longitude: number 
 };
 
 const Map = ({ locations }: Props) => {
-  const { coords, error, loading } = useGeolocation();
+  const { coords, accuracy, error, loading } = useGeolocation();
   const { distanceUnit } = useSettings();
   const defaultCenter: [number, number] = [42.026, -93.648]; // Iowa State
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -129,17 +130,44 @@ const Map = ({ locations }: Props) => {
         })}
 
         {coords && (
-          <Marker 
-            position={[coords.latitude, coords.longitude]} 
-            icon={userIcon}
-          >
-            <Popup>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MyLocationIcon color="primary" />
-                <span>You are here</span>
-              </Box>
-            </Popup>
-          </Marker>
+          <>
+            {/* Accuracy circle showing uncertainty radius */}
+            {accuracy && (
+              <Circle
+                center={[coords.latitude, coords.longitude]}
+                radius={accuracy}
+                pathOptions={{
+                  color: '#2196f3',
+                  fillColor: '#2196f3',
+                  fillOpacity: 0.1,
+                  weight: 2,
+                  dashArray: '5, 5'
+                }}
+              />
+            )}
+            <Marker 
+              position={[coords.latitude, coords.longitude]} 
+              icon={userIcon}
+            >
+              <Popup>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <MyLocationIcon color="primary" />
+                    <strong>You are here</strong>
+                  </Box>
+                  {accuracy && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <GpsFixedIcon fontSize="small" color="action" />
+                      <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                        Accuracy: ±{Math.round(accuracy)}m
+                        {accuracy > 100 && ' (Low accuracy - move to open area)'}
+                      </span>
+                    </Box>
+                  )}
+                </Box>
+              </Popup>
+            </Marker>
+          </>
         )}
 
         <MapUpdater coords={coords} />

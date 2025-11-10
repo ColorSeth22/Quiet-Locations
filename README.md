@@ -5,49 +5,69 @@ Find quiet, comfortable places for studying and working. This is a React + TypeS
 ## Features
 
 - Interactive map with location markers (Leaflet)
-- Add, update, and delete locations (Express JSON storage)
+- Add, update, and delete locations
 - Geolocation centering and a clearly styled user marker (red arrow)
 - Distance display with unit selection (km/mi) via a Settings modal
 - Tag-based filtering (overlay panel and in the Settings modal)
 - Mobile-first UI with bottom navigation (MUI)
+- PostgreSQL database with serverless API routes
 
 ## Tech stack
 
 - Frontend: React 19, TypeScript, Vite, MUI, React-Leaflet
-- Backend: Express 5, CORS, JSON file storage
+- Backend: Vercel Serverless Functions (Node.js), PostgreSQL
 - Map: Leaflet 1.9
+- Database: PostgreSQL with node-postgres (pg)
 
 ## Getting started
 
 Prerequisites
 - Node.js 18+ (recommended)
 - npm 9+
+- PostgreSQL 12+ (local or hosted)
 
 Install dependencies
 ```bash
 npm install
 ```
 
-Start the backend API (port 4000 by default)
+### Database Setup
+
+1. **Create the database schema**
 ```bash
-npm run start:server
+# Using psql (adjust path if needed)
+psql -U postgres -d postgres -f db/schema.sql
 ```
+
+2. **Set up environment variables**
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit .env and set your DATABASE_URL
+# Example: DATABASE_URL=postgresql://postgres:password@localhost:5432/postgres
+```
+
+3. **Seed initial data** (optional, migrates from server/data/locations.json)
+```bash
+node db/seed.js
+```
+
+### Running the app
 
 Start the frontend dev server (Vite)
 ```bash
 npm run dev
 ```
 
-Start both together (concurrent dev)
+The serverless API functions under `/api` will be called by the frontend. For local development, you can also use:
+
 ```bash
-npm run dev:all
+# Run the old Express server (if you still have it for testing)
+npm run start:server
 ```
 
 Open http://localhost:5173 in your browser.
-
-Optional: configure the API base URL for the frontend using Vite env:
-- Create a `.env` file at the repo root
-- Add `VITE_API_BASE_URL=http://localhost:4000`
 
 ## Usage tips
 
@@ -74,16 +94,33 @@ Locations are stored in `server/data/locations.json` and served by the backend.
 
 ## API
 
-Base URL: `http://localhost:4000/api`
+Base URL (local dev): `/api` (serverless functions)  
+Base URL (production): `https://<your-vercel-url>/api`
 
-- GET `/locations` → `Location[]`
-- POST `/locations` → create a location
-  - Body: `Location`
-- PUT `/locations/:id` → update fields (e.g., tags)
-  - Body: Partial `Location`
-- DELETE `/locations/:id` → remove a location
+### Endpoints
+
+- **GET** `/api/locations` → `Location[]`
+  - Returns all locations with their tags aggregated
+  
+- **POST** `/api/locations` → create a location
+  - Body: `{ name, lat, lng, address?, description?, tags?: string[] }`
+  - Returns created location with UUID
+  
+- **PUT** `/api/locations/:id` → update fields
+  - Body: Partial location (e.g., `{ name, tags, ... }`)
+  - Tags are fully replaced if provided
+  
+- **DELETE** `/api/locations/:id` → remove a location
+  - CASCADE automatically removes associated tags
 
 Errors return `{ error: string }` with an appropriate status code.
+
+### Database Schema
+
+See `db/schema.sql` for the full PostgreSQL schema including:
+- Users, Locations, Tags, LocationTags, Ratings, Favorites tables
+- UUID primary keys
+- Foreign key constraints with cascading deletes
 
 ## Project structure
 
@@ -129,20 +166,49 @@ Most browsers require HTTPS for geolocation. Localhost is treated as a secure co
 
 Made with React, MUI, and Leaflet.
 
-## Deploying to Vercel (MVP-friendly)
+## Deploying to Vercel
 
-Option A: UI on Vercel, backend on a host with persistent storage (recommended for quick MVP)
-- Deploy the frontend (this repo) to Vercel.
-- Deploy the Express server (server/index.js) to a persistent Node host (e.g., Render, Railway, Fly.io, your VM). Ensure it exposes `https://<your-backend>/api`.
-- In Vercel, set an Environment Variable `BACKEND_URL` to your backend base URL (e.g., `https://quiet-locations-api.onrender.com`).
-- The provided `vercel.json` will rewrite `/api/*` calls from the frontend to `${BACKEND_URL}/api/*` on Vercel.
-- Also set `VITE_API_BASE_URL` to `/` in Vercel if you want the app to call relative `/api/*` during runtime.
+This app uses Vercel Serverless Functions under `/api` and requires a PostgreSQL database.
 
-Option B: Serverless functions on Vercel (requires changes)
-- Move endpoints from `server/index.js` into `api/` serverless functions.
-- Replace file-based persistence with a Vercel storage option (KV, Postgres, Blob) because serverless file systems are ephemeral.
-- After migrating, you can remove `BACKEND_URL` and call `/api/*` directly.
+### Steps
 
-Local preview with both servers
-- Use `npm run dev:all` to run Vite and the Express server concurrently.
-- Alternatively, if you convert to Vercel serverless, use `vercel dev` (requires Vercel CLI) to emulate functions locally.
+1. **Set up a PostgreSQL database**
+   - Option A: Use Vercel Postgres (built-in, easy setup)
+   - Option B: Use an external provider (Supabase, Neon, Railway, etc.)
+
+2. **Deploy to Vercel**
+   ```bash
+   # Install Vercel CLI if you haven't
+   npm i -g vercel
+   
+   # Deploy
+   vercel
+   ```
+
+3. **Configure environment variables in Vercel**
+   - Go to your project settings → Environment Variables
+   - Add `DATABASE_URL` with your PostgreSQL connection string
+   - Example: `postgresql://user:password@host:5432/database`
+
+4. **Run the schema on your production database**
+   ```bash
+   # Connect to your production database and run:
+   psql <your-production-connection-string> -f db/schema.sql
+   
+   # Then seed if needed:
+   DATABASE_URL=<your-production-url> node db/seed.js
+   ```
+
+5. **Redeploy** (if you added env vars after first deploy)
+   ```bash
+   vercel --prod
+   ```
+
+### Local testing with serverless functions
+
+```bash
+# Requires Vercel CLI
+vercel dev
+```
+
+This emulates the serverless environment locally and respects your `.env` file.

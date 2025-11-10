@@ -4,15 +4,30 @@ import Paper from '@mui/material/Paper';
 import MapIcon from '@mui/icons-material/Map';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import EditIcon from '@mui/icons-material/Edit';
+import LoginIcon from '@mui/icons-material/Login';
+import LogoutIcon from '@mui/icons-material/Logout';
+import { useAuth } from '../contexts/auth';
+
+type ViewType = 'welcome' | 'map' | 'add' | 'update' | 'login' | 'register';
 
 type Props = {
-  currentView: string;
-  setView: (view: string) => void;
+  currentView: ViewType;
+  setView: (view: ViewType) => void;
 };
 
 const MainMenu = ({ currentView, setView }: Props) => {
-  const valueMap: Record<string, number> = { map: 0, add: 1, update: 2 };
-  const reverseMap: Record<number, string> = { 0: 'map', 1: 'add', 2: 'update' };
+  const { isAuthenticated, logout } = useAuth();
+  const valueMap: Record<string, number> = { map: 0, add: 1, update: 2, login: 3 };
+  const reverseMap: Record<number, ViewType> = { 0: 'map', 1: 'add', 2: 'update', 3: 'login' };
+
+  const handleAuthAction = () => {
+    if (isAuthenticated) {
+      logout();
+      setView('map');
+    } else {
+      setView('login');
+    }
+  };
 
   return (
     <Paper
@@ -46,6 +61,14 @@ const MainMenu = ({ currentView, setView }: Props) => {
         <BottomNavigationAction
           label="Edit"
           icon={<EditIcon />}
+          sx={{
+            '& .MuiBottomNavigationAction-label': { fontSize: '0.75rem' },
+          }}
+        />
+        <BottomNavigationAction
+          label={isAuthenticated ? 'Logout' : 'Login'}
+          icon={isAuthenticated ? <LogoutIcon /> : <LoginIcon />}
+          onClick={handleAuthAction}
           sx={{
             '& .MuiBottomNavigationAction-label': { fontSize: '0.75rem' },
           }}

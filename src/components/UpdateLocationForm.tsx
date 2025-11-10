@@ -15,11 +15,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import TAGS from '../data/tags';
 
-// API base URL (should match App.tsx). In production use relative '/api'.
-const API_BASE = import.meta.env.PROD
-  ? ((import.meta.env.VITE_API_BASE_URL as string) ?? '')
-  : ((import.meta.env.VITE_API_BASE_URL as string) ?? 'http://localhost:4000');
-
 type Props = {
   locations: {
     id: string;
@@ -27,10 +22,11 @@ type Props = {
     tags: string[];
   }[];
   onUpdateTags: (id: string, newTags: string[]) => void;
+  onDelete?: (id: string) => Promise<boolean>;
   onDeleted?: (id: string) => void;
 };
 
-const UpdateLocationForm = ({ locations, onUpdateTags, onDeleted }: Props) => {
+const UpdateLocationForm = ({ locations, onUpdateTags, onDelete, onDeleted }: Props) => {
   const [selectedId, setSelectedId] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -57,10 +53,8 @@ const UpdateLocationForm = ({ locations, onUpdateTags, onDeleted }: Props) => {
     if (!selectedId) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/locations/${selectedId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
+      const success = onDelete ? await onDelete(selectedId) : true;
+      if (success) {
         if (onDeleted) onDeleted(selectedId);
       } else {
         console.error('Failed to delete location');
