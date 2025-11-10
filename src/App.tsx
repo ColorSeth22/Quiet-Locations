@@ -130,7 +130,7 @@ function AppContent() {
 
   return (
     <SettingsProvider>
-      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {view === 'welcome' ? (
         <Box
           component="main"
@@ -167,7 +167,15 @@ function AppContent() {
       ) : (
         <>
           <MainMenu currentView={view} setView={setView} />
-          <Box component="main" sx={{ flex: 1, p: 2, pb: '80px' }}>
+          <Box 
+            component="main" 
+            sx={{ 
+              flex: 1, 
+              overflow: 'auto',
+              height: 'calc(100vh - 64px)', // Subtract MainMenu height (64px)
+              pb: 0
+            }}
+          >
             {view === 'map' && (
               <Box
                 sx={{
@@ -175,34 +183,38 @@ function AppContent() {
                   borderRadius: 2,
                   overflow: 'hidden',
                   boxShadow: 3,
-                  mb: 2,
+                  m: 2,
                 }}
               >
                 <Map locations={locations} />
               </Box>
             )}
-            {view === 'add' && <AddLocationForm onAdd={handleAddLocation} />}
-            {view === 'update' && (
-              <UpdateLocationForm
-                locations={locations}
-                onUpdateTags={handleUpdateTags}
-                onDelete={handleDeleteLocation}
-                onDeleted={(id) => setLocations((prev) => prev.filter((l) => l.id !== id))}
-              />
+            {view !== 'map' && (
+              <Box sx={{ p: 2 }}>
+                {view === 'add' && <AddLocationForm onAdd={handleAddLocation} />}
+                {view === 'update' && (
+                  <UpdateLocationForm
+                    locations={locations}
+                    onUpdateTags={handleUpdateTags}
+                    onDelete={handleDeleteLocation}
+                    onDeleted={(id) => setLocations((prev) => prev.filter((l) => l.id !== id))}
+                  />
+                )}
+                {view === 'login' && (
+                  <LoginForm
+                    onSuccess={() => setView('map')}
+                    onSwitchToRegister={() => setView('register')}
+                  />
+                )}
+                {view === 'register' && (
+                  <RegisterForm
+                    onSuccess={() => setView('map')}
+                    onSwitchToLogin={() => setView('login')}
+                  />
+                )}
+                {view === 'profile' && <UserProfile />}
+              </Box>
             )}
-            {view === 'login' && (
-              <LoginForm
-                onSuccess={() => setView('map')}
-                onSwitchToRegister={() => setView('register')}
-              />
-            )}
-            {view === 'register' && (
-              <RegisterForm
-                onSuccess={() => setView('map')}
-                onSwitchToLogin={() => setView('login')}
-              />
-            )}
-            {view === 'profile' && <UserProfile />}
           </Box>
         </>
       )}

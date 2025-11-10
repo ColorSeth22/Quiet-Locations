@@ -1,29 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type GeolocationState = {
   coords: { latitude: number; longitude: number } | null;
   accuracy: number | null;
   error: string | null;
   loading: boolean;
+  refetch: () => void;
 };
 
 export const useGeolocation = () => {
-  const [state, setState] = useState<GeolocationState>({
+  const [state, setState] = useState<Omit<GeolocationState, 'refetch'>>({
     coords: null,
     accuracy: null,
     error: null,
     loading: true,
   });
 
-  useEffect(() => {
+  const fetchLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setState((prev) => ({
-        ...prev,
+      setState({
+        coords: null,
+        accuracy: null,
         error: 'Geolocation is not supported by your browser',
         loading: false,
-      }));
+      });
       return;
     }
+
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     // High accuracy options for better positioning
     const options: PositionOptions = {
@@ -62,7 +66,11 @@ export const useGeolocation = () => {
     );
   }, []);
 
-  return state;
+  useEffect(() => {
+    fetchLocation();
+  }, [fetchLocation]);
+
+  return { ...state, refetch: fetchLocation };
 };
 
 export default useGeolocation;

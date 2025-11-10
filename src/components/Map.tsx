@@ -9,14 +9,21 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import PlaceIcon from '@mui/icons-material/Place';
 import SettingsIcon from '@mui/icons-material/Settings';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import SettingsDialog from './SettingsDialog';
+import OccupancyReport from './OccupancyReport';
 
 type Location = {
   id: string;
@@ -44,11 +51,23 @@ const MapUpdater = ({ coords }: { coords: { latitude: number; longitude: number 
 };
 
 const Map = ({ locations }: Props) => {
-  const { coords, accuracy, error, loading } = useGeolocation();
+  const { coords, accuracy, error, loading, refetch } = useGeolocation();
   const { distanceUnit } = useSettings();
   const defaultCenter: [number, number] = [42.026, -93.648]; // Iowa State
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string; lat: number; lng: number } | null>(null);
+
+  const handleOpenReportModal = (loc: { id: string; name: string; lat: number; lng: number }) => {
+    setSelectedLocation(loc);
+    setReportModalOpen(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setReportModalOpen(false);
+    setSelectedLocation(null);
+  };
 
   if (loading) {
     return (
@@ -66,6 +85,7 @@ const Map = ({ locations }: Props) => {
 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+      {/* Settings button - top right */}
       <Box 
         sx={{ 
           position: 'absolute', 
@@ -81,6 +101,32 @@ const Map = ({ locations }: Props) => {
           <IconButton onClick={() => setSettingsOpen(true)} size="large">
             <SettingsIcon />
           </IconButton>
+        </Tooltip>
+      </Box>
+
+      {/* Refresh location button - top right, below settings */}
+      <Box 
+        sx={{ 
+          position: 'absolute', 
+          top: 80, 
+          right: 16, 
+          zIndex: 1000, 
+          backgroundColor: 'white',
+          borderRadius: '50%',
+          boxShadow: 2
+        }}
+      >
+        <Tooltip title={loading ? "Getting location..." : "Refresh my location"}>
+          <span>
+            <IconButton 
+              onClick={() => refetch()} 
+              size="large"
+              disabled={loading}
+              color={accuracy && accuracy > 100 ? "warning" : "primary"}
+            >
+              <RefreshIcon className={loading ? 'rotating' : ''} />
+            </IconButton>
+          </span>
         </Tooltip>
       </Box>
 
@@ -123,6 +169,17 @@ const Map = ({ locations }: Props) => {
                       />
                     ))}
                   </Box>
+                  
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<AssessmentIcon />}
+                    onClick={() => handleOpenReportModal({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng })}
+                    sx={{ mt: 1 }}
+                  >
+                    Report How Busy
+                  </Button>
                 </Box>
               </Popup>
             </Marker>
@@ -164,6 +221,17 @@ const Map = ({ locations }: Props) => {
                       </span>
                     </Box>
                   )}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<RefreshIcon />}
+                    onClick={() => refetch()}
+                    disabled={loading}
+                    sx={{ mt: 1 }}
+                  >
+                    {loading ? 'Getting Location...' : 'Refresh Location'}
+                  </Button>
                 </Box>
               </Popup>
             </Marker>
@@ -177,7 +245,20 @@ const Map = ({ locations }: Props) => {
         open={!!error} 
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="warning" sx={{ width: '100%' }}>
+        <Alert 
+          severity="warning" 
+          sx={{ width: '100%' }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => refetch()}
+              disabled={loading}
+            >
+              {loading ? 'Retrying...' : 'Retry'}
+            </Button>
+          }
+        >
           {error || 'Unable to get your location'}
         </Alert>
       </Snackbar>
@@ -189,6 +270,30 @@ const Map = ({ locations }: Props) => {
         selectedTags={selectedTags}
         onApplyFilters={setSelectedTags}
       />
+
+      {/* Occupancy report modal */}
+      <Dialog
+        open={reportModalOpen}
+        onClose={handleCloseReportModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Report Occupancy
+          {selectedLocation && ` - ${selectedLocation.name}`}
+        </DialogTitle>
+        <DialogContent>
+          {selectedLocation && (
+            <OccupancyReport
+              locationId={selectedLocation.id}
+              locationName={selectedLocation.name}
+              locationLat={selectedLocation.lat}
+              locationLng={selectedLocation.lng}
+              onReported={handleCloseReportModal}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

@@ -11,11 +11,14 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Avatar from '@mui/material/Avatar';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import StarIcon from '@mui/icons-material/Star';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import EditIcon from '@mui/icons-material/Edit';
 import LabelIcon from '@mui/icons-material/Label';
 import RateReviewIcon from '@mui/icons-material/RateReview';
+import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../contexts/auth';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -69,6 +72,8 @@ const UserProfile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allowDataCollection, setAllowDataCollection] = useState(false);
+  const [updatingPreference, setUpdatingPreference] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -84,12 +89,20 @@ const UserProfile = () => {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
+        // Fetch profile data
         const res = await fetch(`${API_BASE}/api/users/${authUser.user_id}`, { headers });
         if (res.ok) {
           const data = await res.json();
           setProfile(data);
         } else {
           setError('Failed to load profile');
+        }
+
+        // Fetch data collection preference
+        const prefRes = await fetch(`${API_BASE}/api/users/data-collection`, { headers });
+        if (prefRes.ok) {
+          const prefData = await prefRes.json();
+          setAllowDataCollection(prefData.allow_data_collection);
         }
       } catch {
         setError('Error fetching profile');
@@ -100,6 +113,36 @@ const UserProfile = () => {
 
     fetchProfile();
   }, [authUser, token]);
+
+  const handleDataCollectionToggle = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+    setUpdatingPreference(true);
+
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${API_BASE}/api/users/data-collection`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ allow_data_collection: newValue })
+      });
+
+      if (res.ok) {
+        setAllowDataCollection(newValue);
+      } else {
+        setError('Failed to update preference');
+      }
+    } catch {
+      setError('Error updating preference');
+    } finally {
+      setUpdatingPreference(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -124,7 +167,7 @@ const UserProfile = () => {
   });
 
   return (
-    <Box sx={{ p: 2, maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
       {/* User Header */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -262,7 +305,40 @@ const UserProfile = () => {
             <Chip label="Edit Location: +5 pts" size="small" />
             <Chip label="Update Tags: +3 pts" size="small" />
             <Chip label="Add Rating: +2 pts" size="small" />
+            <Chip label="Report Occupancy: +1 pt" size="small" />
           </Stack>
+        </CardContent>
+      </Card>
+
+      {/* Data Collection Opt-In */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <PeopleIcon color="primary" sx={{ mt: 0.5 }} />
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" gutterBottom>
+                Help the Community
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Contribute anonymous occupancy data to help others find quiet spaces. When enabled, you can report how busy locations are in real-time. Your GPS coordinates are optional and only used to verify you're near the location.
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={allowDataCollection}
+                    onChange={handleDataCollectionToggle}
+                    disabled={updatingPreference}
+                  />
+                }
+                label={allowDataCollection ? 'Data collection enabled' : 'Enable data collection'}
+              />
+              {allowDataCollection && (
+                <Alert severity="success" sx={{ mt: 2 }}>
+                  Thank you for helping the community! You can now report occupancy levels and earn +1 point per report.
+                </Alert>
+              )}
+            </Box>
+          </Box>
         </CardContent>
       </Card>
     </Box>

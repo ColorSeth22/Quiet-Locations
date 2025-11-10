@@ -50,6 +50,20 @@
   z-index: 1000;
 }
 
+/* Rotating animation for refresh icon */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotating {
+  animation: spin 1s linear infinite;
+}
+
 .menu-button {
   display: flex;
   flex-direction: column;
