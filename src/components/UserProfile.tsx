@@ -13,6 +13,11 @@ import ListItemText from '@mui/material/ListItemText';
 import Avatar from '@mui/material/Avatar';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 import StarIcon from '@mui/icons-material/Star';
 import AddLocationIcon from '@mui/icons-material/AddLocation';
 import EditIcon from '@mui/icons-material/Edit';
@@ -22,6 +27,11 @@ import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../contexts/auth';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+};
 
 type Activity = {
   activity_id: string;
@@ -67,7 +77,7 @@ const activityLabels: Record<string, string> = {
   add_rating: 'Added Rating',
 };
 
-const UserProfile = () => {
+const UserProfile = ({ open, onClose }: Props) => {
   const { user: authUser, token } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,17 +156,32 @@ const UserProfile = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogContent>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            <CircularProgress />
+          </Box>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   if (error || !profile) {
     return (
-      <Box p={2}>
-        <Alert severity="error">{error || 'Unable to load profile'}</Alert>
-      </Box>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle>
+          User Profile
+          <IconButton
+            onClick={onClose}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="error">{error || 'Unable to load profile'}</Alert>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -167,12 +192,23 @@ const UserProfile = () => {
   });
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-      {/* User Header */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '2rem' }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        User Profile
+        <IconButton
+          onClick={onClose}
+          sx={{ position: 'absolute', right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Box>
+          {/* User Header */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', fontSize: '2rem' }}>
               {(profile.user.display_name || profile.user.email)[0].toUpperCase()}
             </Avatar>
             <Box sx={{ flex: 1 }}>
@@ -341,7 +377,9 @@ const UserProfile = () => {
           </Box>
         </CardContent>
       </Card>
-    </Box>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 

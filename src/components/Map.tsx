@@ -5,6 +5,7 @@ import { userIcon } from '../utils/userIcon';
 import useGeolocation from '../hooks/useGeolocation';
 import { getDistanceKm, formatDistance } from '../utils/distance';
 import { useSettings } from '../contexts/settings/hooks';
+import { useAuth } from '../contexts/auth';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
@@ -19,6 +20,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -35,6 +37,7 @@ type Location = {
 
 type Props = {
   locations: Location[];
+  onProfileClick?: () => void;
 };
 
 // Component to handle map recenter when user location is available
@@ -50,9 +53,10 @@ const MapUpdater = ({ coords }: { coords: { latitude: number; longitude: number 
   return null;
 };
 
-const Map = ({ locations }: Props) => {
+const Map = ({ locations, onProfileClick }: Props) => {
   const { coords, accuracy, error, loading, refetch } = useGeolocation();
   const { distanceUnit } = useSettings();
+  const { isAuthenticated } = useAuth();
   const defaultCenter: [number, number] = [42.026, -93.648]; // Iowa State
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -85,6 +89,27 @@ const Map = ({ locations }: Props) => {
 
   return (
     <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+      {/* Profile button - top right (only when authenticated) */}
+      {isAuthenticated && onProfileClick && (
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            top: 16, 
+            right: 80, // Left of settings button
+            zIndex: 1000, 
+            backgroundColor: 'white',
+            borderRadius: '50%',
+            boxShadow: 2
+          }}
+        >
+          <Tooltip title="Profile">
+            <IconButton onClick={onProfileClick} size="large">
+              <AccountCircleIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
+
       {/* Settings button - top right */}
       <Box 
         sx={{ 

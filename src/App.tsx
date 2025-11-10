@@ -25,7 +25,8 @@ type Location = {
 };
 
 function AppContent() {
-  const [view, setView] = useState<'welcome' | 'map' | 'add' | 'update' | 'login' | 'register' | 'profile'>('welcome');
+  const [view, setView] = useState<'welcome' | 'map' | 'add' | 'update' | 'login' | 'register'>('welcome');
+  const [profileOpen, setProfileOpen] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
   const { token } = useAuth();
 
@@ -166,7 +167,10 @@ function AppContent() {
         </Box>
       ) : (
         <>
-          <MainMenu currentView={view} setView={setView} />
+          <MainMenu 
+            currentView={view} 
+            setView={setView}
+          />
           <Box 
             component="main" 
             sx={{ 
@@ -186,7 +190,10 @@ function AppContent() {
                   m: 2,
                 }}
               >
-                <Map locations={locations} />
+                <Map 
+                  locations={locations} 
+                  onProfileClick={() => setProfileOpen(true)}
+                />
               </Box>
             )}
             {view !== 'map' && (
@@ -212,10 +219,15 @@ function AppContent() {
                     onSwitchToLogin={() => setView('login')}
                   />
                 )}
-                {view === 'profile' && <UserProfile />}
               </Box>
             )}
           </Box>
+          
+          {/* Profile Modal */}
+          <UserProfile 
+            open={profileOpen} 
+            onClose={() => setProfileOpen(false)} 
+          />
         </>
       )}
       </Box>
